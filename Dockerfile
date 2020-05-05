@@ -51,8 +51,10 @@ RUN curl -sL https://deb.nodesource.com/setup_10.x | bash - && \
        php7.2-zip \
        nodejs \
        ssh \
-       mysql-client && \
-       rm -r /var/lib/apt/lists/*
+       mysql-client \
+       mysql-server
+  
+RUN rm -r /var/lib/apt/lists/*
 
 RUN pecl install imagick xdebug
 
@@ -64,7 +66,7 @@ RUN apt-get update && apt-get -y install google-chrome-stable
 ENV CHROME_BIN /usr/bin/google-chrome
 
 RUN apt purge -y software-properties-common && \
-    apt autoremove -y --purge && \
+    apt autoremove --purge -y && \
     apt clean -y
 
 ARG BUILDKIT_UID=1000
@@ -72,10 +74,19 @@ ARG BUILDKIT_GID=$BUILDKIT_UID
 RUN addgroup --gid=$BUILDKIT_GID buildkit
 RUN useradd --home-dir /buildkit --create-home --uid $BUILDKIT_UID --gid $BUILDKIT_GID buildkit
 COPY buildkit-sudoers /etc/sudoers.d/buildkit
-COPY --chown=buildkit:buildkit amp.services.yml /buildkit/.amp/services.ym
+COPY --chown=buildkit:buildkit amp.services.yml /buildkit/.amp/services.yml
 
 RUN su - buildkit -c "git clone https://github.com/civicrm/civicrm-buildkit" && \
-    su - buildkit -c "/buildkit/civicrm-buildkit/bin/civi-download-tools" && \
-    rm -rf /tmp/**
+    su - buildkit -c "/buildkit/civicrm-buildkit/bin/civi-download-tools" 
 
 ENV PATH /buildkit/civicrm-buildkit/bin:$PATH
+
+RUN service mysql restart && \
+    mysql -e "CREATE USER 'buildkit'@'localhost' IDENTIFIED BY 'buildkit'; GRANT ALL ON *.* to 'buildkit'@'localhost' IDENTIFIED BY 'buildkit' WITH GRANT OPTION; FLUSH PRIVILEGES" && \
+    su - buildkit -c "/buildkit/civicrm-buildkit/bin/civibuild create drupal-clean --civi-ver 5.24.6" && \
+    rm -rf /tmp/* && \
+    cd /buildkit/civicrm-buildkit/build/drupal-clean/web && drush sql-dump > /buildkit/drupal.sql && \
+    cd /buildkit/civicrm-buildkit/build/drupal-clean/web && drush civicrm-sql-dump > /buildkit/civicrm.sql
+
+COPY settings/settings.php /buildkit/civicrm-buildkit/build/drupal-clean/web/sites/default/settings.php
+COPY settings/civicrm.settings.php /buildkit/civicrm-buildkit/build/drupal-clean/web/sites/default/civicrm.settings.php
