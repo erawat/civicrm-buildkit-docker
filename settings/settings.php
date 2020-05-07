@@ -1,4 +1,20 @@
 <?php
+    #### If deployed via civibuild, include any "pre" scripts
+    global $civibuild;
+    $civibuild['PRJDIR'] = '/buildkit/civicrm-buildkit';
+    $civibuild['SITE_CONFIG_DIR'] = '/buildkit/civicrm-buildkit/app/config/drupal-clean';
+    $civibuild['SITE_TYPE'] = 'drupal-clean';
+    $civibuild['SITE_NAME'] = 'drupal-clean';
+    $civibuild['SITE_ID'] = 'default';
+    $civibuild['SITE_TOKEN'] = 'YQklcbhmvOSKOyea';
+    $civibuild['PRIVATE_ROOT'] = '/buildkit/civicrm-buildkit/app/private/drupal-clean';
+    $civibuild['WEB_ROOT'] = '/buildkit/civicrm-buildkit/build/drupal-clean/web';
+    $civibuild['CMS_ROOT'] = '/buildkit/civicrm-buildkit/build/drupal-clean/web';
+
+    if (file_exists($civibuild['PRJDIR'].'/src/civibuild.settings.php')) {
+      require_once $civibuild['PRJDIR'].'/src/civibuild.settings.php';
+      _civibuild_settings(__FILE__, 'civicrm.settings.d', $civibuild, 'pre');
+    }
 
 $databases = array (
   'default' => 
@@ -46,3 +62,9 @@ $conf['file_scan_ignore_directories'] = array(
   'node_modules',
   'bower_components',
 );
+
+  #### If deployed via civibuild, include any "post" scripts
+  if (file_exists($civibuild['PRJDIR'].'/src/civibuild.settings.php')) {
+    require_once $civibuild['PRJDIR'].'/src/civibuild.settings.php';
+    _civibuild_settings(__FILE__, 'drupal.settings.d', $civibuild, 'post');
+  }
